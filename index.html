@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadwatch – Vehicles &amp; Sensors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f8f9ff; --ink:#0b1c30; --muted:#565e74; --gray:#737686; --gray-d:#434655;
+  --primary:#004ac6; --primary-hover:#003ca3; --s1:#eff4ff; --s2:#e5eeff; --s3:#dce9ff; --s4:#dbe1ff;
+  --err:#ba1a1a; --err-bg:#ffdad6; --err-ink:#93000a;
+  --ok:#10b981; --ok-d:#059669; --ok-bg:#d1fae5; --ok-ink:#065f46; --ok-ink2:#047857; --ok-soft:#ecfdf5;
+  --warn-bg:#fffbeb; --warn-h:#78350f; --warn-t:#92400e;
+  --sans:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  --card:0 4px 6px -1px rgba(0,0,0,.08),0 2px 4px -2px rgba(0,0,0,.05);
+  --card-hover:0 8px 16px -2px rgba(0,74,198,.08),0 4px 8px -2px rgba(0,0,0,.04);
+  --soft:drop-shadow(0 1px 1px rgba(0,0,0,.05));
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);min-height:100vh}
+body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased}
+button{font:inherit;border:0;background:none;cursor:pointer;color:inherit}
+svg.i{display:block;fill:currentColor;flex-shrink:0}
+
+/* Web layout container */
+.app{max-width:1240px;margin:0 auto;min-height:100vh;padding:24px 16px 48px;display:flex;flex-direction:column;gap:20px}
+@media (min-width:768px){.app{padding:32px 28px 64px;gap:24px}}
+
+/* Typography helpers */
+.lbl{font:600 12px/16px var(--sans);letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.mono{font:500 11px/14px var(--mono);letter-spacing:.44px}
+.monob{font:700 11px/14px var(--mono);letter-spacing:.44px}
+
+/* Header & navigation */
+.head{display:flex;flex-direction:column;gap:16px}
+.head-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-ic{width:42px;height:42px;border-radius:10px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,74,198,.28)}
+.eyebrow{font:600 11px/14px var(--sans);letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+h1{font:700 24px/32px var(--sans);letter-spacing:-.6px}
+@media (min-width:640px){h1{font-size:26px;line-height:34px}}
+
+.head-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.toggle-empty{display:inline-flex;align-items:center;gap:8px;background:var(--s2);filter:var(--soft);padding:8px 14px;border-radius:10px;color:var(--primary);font:600 13px/18px var(--sans);letter-spacing:.2px;transition:background .15s,transform .1s}
+.toggle-empty:hover{background:var(--s3)}
+.toggle-empty:active{transform:scale(.98)}
+
+/* Fleet status banner */
+.banner{display:flex;align-items:center;justify-content:space-between;background:var(--s1);filter:var(--soft);padding:14px 18px;border-radius:10px;flex-wrap:wrap;gap:14px}
+.banner-l{display:flex;align-items:center;gap:14px}
+.banner-ic{width:36px;height:36px;border-radius:10px;background:var(--s4);display:flex;align-items:center;justify-content:center;color:var(--primary)}
+.banner h3{font:600 15px/22px var(--sans);letter-spacing:-.08px}
+.banner p{font:400 12px/16px var(--sans);color:var(--muted)}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:8px;background:#fff;filter:var(--soft);padding:6px 12px;border-radius:12px}
+.chip i{width:8px;height:8px;border-radius:50%;display:block}
+
+/* Dashboard multi-column layout */
+.dashboard{display:grid;grid-template-columns:1fr;gap:24px;align-items:start}
+@media (min-width:992px){
+  .dashboard{grid-template-columns:minmax(0, 1.3fr) minmax(380px, 1fr);gap:28px}
+}
+
+.fleet-col{display:flex;flex-direction:column;gap:20px}
+.settings-col{display:flex;flex-direction:column;gap:20px}
+@media (min-width:992px){
+  .settings-col{position:sticky;top:24px}
+}
+
+/* Vehicle card */
+.list{display:flex;flex-direction:column;gap:20px}
+.card{position:relative;background:#fff;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--card);transition:box-shadow .2s}
+.card:hover{box-shadow:var(--card-hover)}
+.card.stale{opacity:.95}
+.row{display:flex;align-items:center;justify-content:space-between}
+.vh{display:flex;gap:12px;align-items:center}
+.vic{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--s2);color:var(--primary)}
+.vic.off{background:var(--s3);color:var(--muted)}
+.vname{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.vname h2{font:600 17px/24px var(--sans);letter-spacing:-.1px;white-space:nowrap}
+.tag{padding:3px 10px;border-radius:12px;background:var(--s3);color:var(--gray-d)}
+.tag.soft{background:var(--s2);color:var(--muted)}
+.plate{color:var(--muted);letter-spacing:.55px}
+.badge{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:12px;filter:var(--soft);align-self:flex-start}
+.badge i{width:8px;height:8px;border-radius:50%;display:block}
+.badge.on{background:var(--ok-bg);color:var(--ok-ink)} .badge.on i{background:var(--ok-d);animation:pulse 1.8s ease-in-out infinite}
+.badge.offb{background:var(--s3);color:var(--gray-d)} .badge.offb i{background:var(--gray)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(5,150,105,.45)}50%{box-shadow:0 0 0 4px rgba(5,150,105,0)}}
+
+/* Stats row */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:4px}
+.stat{background:var(--s1);border-radius:8px;padding:12px 14px}
+.stat.a{display:flex;flex-direction:column;justify-content:space-between}
+.stat.b{display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+.big{display:flex;align-items:baseline;gap:4px;padding-top:4px}
+.big b{font:700 30px/34px var(--mono);letter-spacing:-.56px}
+.big span{font:500 12px/14px var(--mono);letter-spacing:.44px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:4px;margin-top:6px;align-self:flex-start}
+.pill.bad{background:var(--err-bg);color:var(--err-ink)}
+.pill.good{background:var(--ok-bg);color:var(--ok-ink)}
+.pill.idle{background:var(--s3);color:var(--muted)}
+.hb{display:flex;flex-direction:column;gap:4px}
+.hb .v{display:flex;align-items:center;gap:6px;font:700 13px/18px var(--mono)}
+.hb .v svg{color:var(--err)}
+.hb.off .v{font-weight:500;color:var(--muted)} .hb.off .v svg{color:var(--muted)}
+
+/* Map & Location */
+.loc{display:flex;flex-direction:column;gap:8px;padding-top:4px}
+.loc .r{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.loc .r .t{font:500 13px/18px var(--sans)}
+.loc .r .m{color:var(--gray)}
+.map{position:relative;height:180px;border-radius:6px;overflow:hidden;background:var(--s2);box-shadow:inset 0 2px 4px rgba(0,0,0,.05)}
+@media (max-width:600px){.map{height:130px}}
+.map>img,.map img[data-asset="map"]{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}
+.map .ov{position:absolute;inset:0;background:rgba(0,74,198,.08);display:flex;align-items:center;justify-content:center;pointer-events:none}
+.geo{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);padding:5px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);color:var(--primary)}
+.geo i{width:8px;height:8px;border-radius:50%;background:var(--primary);display:block}
+.hw{display:flex;align-items:center;justify-content:space-between;padding-top:4px;color:var(--muted)}
+.hw .l{display:flex;align-items:center;gap:6px}
+.hw .fw{padding:2px 8px;border-radius:4px;background:var(--s2);color:var(--gray-d)}
+.actions{display:flex;gap:10px;padding-top:4px}
+.btn{flex:1;min-width:1px;min-height:42px;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:8px;font:600 14px/20px var(--sans);transition:transform .1s,filter .15s}
+.btn:active{transform:scale(.98)}
+.btn.p{background:var(--primary);color:#fff;filter:var(--soft)}
+.btn.s{background:var(--s2);color:var(--ink)}
+.btn:hover{filter:brightness(.95)}
+
+/* Warning & Photo (Card 2) */
+.warn{display:flex;gap:10px;align-items:flex-start;background:var(--warn-bg);filter:var(--soft);padding:10px 12px;border-radius:8px}
+.warn svg{color:#d97706;margin-top:2px}
+.warn b{display:block;font:600 13px/18px var(--sans);letter-spacing:.2px;color:var(--warn-h)}
+.warn p{font:400 12px/16px var(--sans);color:var(--warn-t)}
+.photo{position:relative;height:140px;border-radius:6px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05);background:var(--s2)}
+.photo img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;opacity:.75;filter:grayscale(1)}
+.photo .ov{position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:4px;background:rgba(33,49,69,.85);color:#eaf1ff}
+.foot{display:flex;align-items:center;justify-content:space-between;padding-top:4px;color:var(--muted)}
+.ping{display:flex;align-items:center;gap:4px;color:var(--primary);font-weight:600}
+.ping:disabled{opacity:.6;cursor:wait}
+
+/* Empty state */
+.empty{display:none;flex-direction:column;align-items:center;text-align:center;gap:10px;background:#fff;border-radius:10px;padding:48px 24px;box-shadow:var(--card)}
+.empty .ic{width:48px;height:48px;border-radius:10px;background:var(--s2);color:var(--primary);display:flex;align-items:center;justify-content:center}
+.empty h2{font:600 18px/26px var(--sans);letter-spacing:-.1px}
+.empty p{font:400 13px/18px var(--sans);color:var(--muted)}
+body.is-empty .vehicle{display:none}
+body.is-empty .empty{display:flex}
+
+/* Hardware settings panel */
+.settings{position:relative;background:#fff;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:18px;box-shadow:var(--card)}
+.sic{width:40px;height:40px;border-radius:10px;background:var(--s2);color:var(--primary);display:flex;align-items:center;justify-content:center}
+.s-sub{font:400 12px/16px var(--sans);color:var(--muted)}
+.cal{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:12px;background:var(--ok-soft);color:var(--ok-ink2)}
+.cal i{width:6px;height:6px;border-radius:50%;background:var(--ok);display:block}
+.cal.dirty{background:var(--warn-bg);color:var(--warn-t)} .cal.dirty i{background:#f59e0b}
+.mcu{position:relative;height:120px;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05);background:var(--s2)}
+.mcu img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}
+.mcu .grad{position:absolute;inset:0;display:flex;align-items:flex-end;padding:10px;background:linear-gradient(to top,rgba(33,49,69,.92),rgba(33,49,69,.4) 50%,rgba(33,49,69,0))}
+.mcu .grad>div{flex:1;display:flex;justify-content:space-between;align-items:center;gap:8px}
+
+.form{display:flex;flex-direction:column;gap:16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field .lh{display:flex;align-items:center;justify-content:space-between}
+.alias{font:400 12px/16px var(--sans);letter-spacing:.6px;text-transform:uppercase;color:var(--primary)}
+.input{display:flex;align-items:center;gap:8px;background:var(--s1);border-radius:8px;padding:10px 12px;color:var(--muted);transition:box-shadow .15s}
+.input:focus-within{box-shadow:0 0 0 2px var(--primary)}
+.input input{flex:1;min-width:1px;border:0;outline:0;background:transparent;font:400 14px/20px var(--sans);color:var(--ink)}
+.dist{background:var(--s1);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.dist .t{display:flex;justify-content:space-between;align-items:center;font:400 12px/16px var(--sans)}
+.dist .t code{font:400 11px/14px 'Liberation Mono',ui-monospace,monospace;letter-spacing:.44px;color:var(--muted)}
+.dist .scale{display:flex;justify-content:space-between;color:var(--gray);font-size:11px}
+.hint{font:400 12px/16px var(--sans);color:var(--muted)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:4px;background:var(--s2);outline:0;margin:4px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--primary);border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.25);cursor:grab}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--primary);border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.25);cursor:grab}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.two>div{display:flex;flex-direction:column;gap:6px}
+.sel{display:flex;align-items:center;justify-content:space-between;background:var(--s2);border-radius:8px;padding:9px 12px;font:600 14px/20px var(--sans);color:var(--muted)}
+.sel span{color:var(--ink)}
+.sel-w{position:relative;background:var(--s1);border-radius:8px}
+.sel-w select{width:100%;-webkit-appearance:none;appearance:none;border:0;outline:0;background:transparent;font:400 14px/20px var(--sans);color:var(--ink);padding:9px 28px 9px 12px;border-radius:8px;cursor:pointer}
+.sel-w select:focus-visible{box-shadow:0 0 0 2px var(--primary)}
+.sel-w::after{content:"";position:absolute;right:12px;top:50%;width:6px;height:6px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.siren{display:flex;align-items:center;justify-content:space-between;background:var(--s1);border-radius:8px;padding:10px 12px;gap:8px}
+.siren .l{display:flex;align-items:center;gap:10px}
+.siren .sic2{width:32px;height:36px;border-radius:8px;background:var(--s2);color:var(--primary);display:flex;align-items:center;justify-content:center}
+.siren b{display:block;font:600 14px/20px var(--sans)}
+.siren .r{display:flex;align-items:center;gap:10px}
+.test{display:flex;align-items:center;gap:5px;background:var(--s2);filter:var(--soft);padding:6px 12px;border-radius:6px;color:var(--primary);font:600 12px/16px var(--sans);letter-spacing:.2px;text-align:center}
+.test:disabled{opacity:.5;cursor:not-allowed}
+.sw{position:relative;width:44px;height:24px;border-radius:12px;background:#c3c6d7;transition:background .2s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sw[aria-checked=true]{background:var(--primary)}
+.sw[aria-checked=true]::after{transform:translateX(20px)}
+.mqtt{background:var(--s1);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.mqtt .ok{display:flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;background:var(--ok-bg);color:var(--ok-ink2)}
+.mqtt .ok i{width:6px;height:6px;border-radius:50%;background:var(--ok-d);display:block}
+.mqtt .url{display:flex;align-items:center;gap:8px;background:#fff;border-radius:6px;padding:8px 10px;overflow:hidden;color:var(--primary)}
+.mqtt .url code{font:400 11px/14px 'Liberation Mono',ui-monospace,monospace;letter-spacing:.44px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mqtt .meta{display:flex;justify-content:space-between;padding-top:2px;color:var(--muted)}
+.save{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;padding:11px 16px;border-radius:8px;background:var(--primary);color:#fff;font:600 15px/22px var(--sans);box-shadow:var(--card);transition:transform .1s,filter .15s}
+.save:hover{filter:brightness(.95)} .save:active{transform:scale(.99)}
+.save:disabled{opacity:.75;cursor:wait}
+
+/* Footer card */
+.foot-card{display:flex;align-items:center;gap:12px;background:var(--s1);border-radius:10px;padding:16px}
+.foot-card .fi{width:36px;height:36px;border-radius:10px;background:var(--s3);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.foot-card b{display:block;font:600 14px/20px var(--sans)}
+.foot-card p{font:400 12px/16px var(--sans);color:var(--muted)}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#213145;color:#eaf1ff;padding:10px 16px;border-radius:8px;font:500 13px/18px var(--sans);box-shadow:var(--card);transition:.25s;max-width:calc(100vw - 32px);z-index:9999}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- Icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="eye" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></symbol>
+  <symbol id="truck" viewBox="0 0 24 24"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></symbol>
+  <symbol id="car" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3.11H5.77L6.85 7zM7.5 16c-.83 0-1.5-.67-1.5-1.5S6.67 13 7.5 13s1.5.67 1.5 1.5S8.33 16 7.5 16zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></symbol>
+  <symbol id="warning" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></symbol>
+  <symbol id="heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></symbol>
+  <symbol id="pin" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></symbol>
+  <symbol id="chip" viewBox="0 0 24 24"><path d="M15 9H9v6h6V9zm-2 4h-2v-2h2v2zm8-2V9h-2V7c0-1.1-.9-2-2-2h-2V3h-2v2h-2V3H9v2H7c-1.1 0-2 .9-2 2v2H3v2h2v2H3v2h2v2c0 1.1.9 2 2 2h2v2h2v-2h2v2h2v-2h2c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2zm-4 6H7V7h10v10z"/></symbol>
+  <symbol id="pulse" viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="tune" viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></symbol>
+  <symbol id="clock" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></symbol>
+  <symbol id="parking" viewBox="0 0 24 24"><path d="M13 3H6v18h4v-6h3c3.31 0 6-2.69 6-6s-2.69-6-6-6zm.2 8H10V7h3.2c1.1 0 2 .9 2 2s-.9 2-2 2z"/></symbol>
+  <symbol id="pushpin" viewBox="0 0 24 24"><path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/></symbol>
+  <symbol id="wifi" viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></symbol>
+  <symbol id="tag" viewBox="0 0 24 24"><path d="M20 10V8h-4V4h-2v4h-4V4H8v4H4v2h4v4H4v2h4v4h2v-4h4v4h2v-4h4v-2h-4v-4h4zm-6 4h-4v-4h4v4z"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/></symbol>
+  <symbol id="volume" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></symbol>
+  <symbol id="play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="cloud" viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0012 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 000 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></symbol>
+  <symbol id="save" viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></symbol>
+  <symbol id="usb" viewBox="0 0 24 24"><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2-1.21 0-2.2.99-2.2 2.2 0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95 0 1.22.99 2.2 2.2 2.2 1.21 0 2.2-.98 2.2-2.2 0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z"/></symbol>
+</svg>
+
+<main class="app">
+
+  <!-- Header + top stats banner -->
+  <header class="head">
+    <div class="head-row">
+      <div class="brand">
+        <div class="brand-ic"><svg class="i" width="22" height="18"><use href="#truck"/></svg></div>
+        <div>
+          <div class="eyebrow">FLEET TELEMETRY &amp; NODE CONFIG</div>
+          <h1>Vehicles &amp; Sensors</h1>
+        </div>
+      </div>
+      <div class="head-actions">
+        <button class="toggle-empty" id="emptyBtn" aria-pressed="false">
+          <svg class="i" width="15" height="10"><use href="#eye"/></svg>
+          <span id="emptyLabel">Preview Empty State</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="banner">
+      <div class="banner-l">
+        <div class="banner-ic"><svg class="i" width="18" height="13"><use href="#truck"/></svg></div>
+        <div>
+          <h3 id="unitsTitle">2 Monitored Units</h3>
+          <p>Active nodes in Trichy District</p>
+        </div>
+      </div>
+      <div class="chips">
+        <div class="chip mono"><i style="background:var(--ok)"></i><span id="onlineChip">1 Online</span></div>
+        <div class="chip mono" style="color:var(--muted)"><i style="background:var(--gray)"></i><span id="offlineChip">1 Offline</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Responsive dashboard: Fleet Telemetry on left, Hardware Config on right -->
+  <div class="dashboard">
+
+    <!-- Left Column: Fleet Vehicles -->
+    <div class="fleet-col">
+      <section class="list" aria-label="Vehicles">
+
+        <!-- Card 1: Active Online -->
+        <article class="card vehicle" id="card1">
+          <div class="row" style="align-items:flex-start">
+            <div class="vh">
+              <div class="vic"><svg class="i" width="18" height="16"><use href="#car"/></svg></div>
+              <div>
+                <div class="vname"><h2>My Vehicle</h2><span class="tag mono">Primary</span></div>
+                <div class="mono plate">TN-45-AZ-9921</div>
+              </div>
+            </div>
+            <div class="badge on monob" style="letter-spacing:.275px"><i></i>ESP32 ONLINE</div>
+          </div>
+
+          <div class="stats">
+            <div class="stat a">
+              <div class="lbl">CURRENT VELOCITY</div>
+              <div class="big"><b id="speed" style="color:var(--err)">62</b><span>km/h</span></div>
+              <div class="pill bad monob" id="speedPill"><svg class="i" width="13" height="11"><use href="#warning"/></svg><span id="speedPillTxt">Exceeded (&gt;50)</span></div>
+            </div>
+            <div class="stat b">
+              <div class="hb">
+                <div class="lbl">TELEMETRY HEARTBEAT</div>
+                <div class="v"><svg class="i" width="12" height="12"><use href="#heart"/></svg><span id="hb">5s ago</span></div>
+              </div>
+              <div class="mono" style="color:var(--muted)" id="latency">Latency: 48ms (UDP)</div>
+            </div>
+          </div>
+
+          <div class="loc">
+            <div class="r">
+              <svg class="i" width="12" height="15" style="color:var(--muted)"><use href="#pin"/></svg>
+              <span class="t">Trichy, Tamil Nadu</span>
+              <span class="mono m">• Chathiram Bus Stand Rd</span>
+            </div>
+            <div class="map" id="mapContainer">
+              <div id="gmap" style="position:absolute;inset:0;width:100%;height:100%"></div>
+              <!-- Figma fallback asset -->
+              <img alt="" src="assets/map.png" data-asset="map" id="mapFallback" style="display:none">
+              <div class="ov"><div class="geo mono"><i></i>Live Geofence Active</div></div>
+            </div>
+          </div>
+
+          <div class="hw">
+            <div class="l"><svg class="i" width="12" height="12"><use href="#chip"/></svg><span class="mono">Node: ESP32-WROOM-32</span></div>
+            <span class="fw mono">FW v2.4.1</span>
+          </div>
+
+          <div class="actions">
+            <button class="btn p" id="liveBtn"><svg class="i" width="15" height="12" viewBox="0 0 24 24"><use href="#pulse"/></svg><span id="liveTxt">Monitor Live</span></button>
+            <button class="btn s" id="calBtn"><svg class="i" width="14" height="14"><use href="#tune"/></svg>Calibrate</button>
+          </div>
+        </article>
+
+        <!-- Card 2: Offline -->
+        <article class="card stale vehicle" id="card2">
+          <div class="row" style="align-items:flex-start">
+            <div class="vh">
+              <div class="vic off"><svg class="i" width="20" height="15"><use href="#truck"/></svg></div>
+              <div>
+                <div class="vname"><h2>Delivery Van 2</h2><span class="tag soft mono">Depot Fleet</span></div>
+                <div class="mono plate">TN-45-BK-1102</div>
+              </div>
+            </div>
+            <div class="badge offb monob" style="letter-spacing:.275px"><i></i>DEVICE OFFLINE</div>
+          </div>
+
+          <div class="stats">
+            <div class="stat a">
+              <div class="lbl">LAST KNOWN SPEED</div>
+              <div class="big" style="color:var(--muted)"><b>0</b><span>km/h</span></div>
+              <div class="pill idle mono"><svg class="i" width="8" height="11"><use href="#parking"/></svg>Stationary</div>
+            </div>
+            <div class="stat b">
+              <div class="hb off">
+                <div class="lbl">LAST TELEMETRY SYNC</div>
+                <div class="v"><svg class="i" width="13" height="13"><use href="#clock"/></svg><span>42 mins ago</span></div>
+              </div>
+              <div class="mono" style="color:var(--err)">Timeout &gt; 30m</div>
+            </div>
+          </div>
+
+          <div class="warn">
+            <svg class="i" width="20" height="17"><use href="#warning"/></svg>
+            <div><b>Data is not live</b><p>ESP32 disconnected from cellular/Wi-Fi AP.<br>Sensor pulse logging cached locally on SD.</p></div>
+          </div>
+
+          <div class="r" style="display:flex;align-items:center;gap:6px">
+            <svg class="i" width="12" height="15" style="color:var(--muted)"><use href="#pin"/></svg>
+            <span style="font:500 13px/18px var(--sans)">Karur Road Depot, Trichy</span>
+          </div>
+
+          <div class="photo">
+            <!-- Figma asset: assets/van.png -->
+            <img alt="" src="assets/van.png" data-asset="van">
+            <div class="ov mono"><svg class="i" width="8" height="10"><use href="#pushpin"/></svg>Security Pin: Zone B</div>
+          </div>
+
+          <div class="foot">
+            <span class="mono">Node ID: ESP32-DEPOT-02</span>
+            <button class="ping mono" id="pingBtn"><span id="pingTxt">Ping Device</span><svg class="i" width="12" height="11"><use href="#wifi"/></svg></button>
+          </div>
+        </article>
+
+        <!-- Empty state (only appears via "Preview Empty State") -->
+        <div class="empty" id="emptyState">
+          <div class="ic"><svg class="i" width="22" height="18"><use href="#truck"/></svg></div>
+          <h2>No vehicles connected</h2>
+          <p>Add an ESP32 Roadwatch node to start monitoring speed in real time.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- Right Column: Hardware Calibration Panel -->
+    <div class="settings-col" id="settingsAnchor">
+      <section class="settings">
+        <div class="row">
+          <div class="vh">
+            <div class="sic"><svg class="i" width="18" height="18"><use href="#tune"/></svg></div>
+            <div>
+              <h2 style="font:600 16px/24px var(--sans);letter-spacing:-.08px">Hardware Calibration</h2>
+              <div class="s-sub">ESP32 Roadwatch Node Setup</div>
+            </div>
+          </div>
+          <div class="cal monob" id="calBadge"><i></i><span id="calTxt">Calibrated</span></div>
+        </div>
+
+        <div class="mcu">
+          <!-- Figma asset: assets/esp32.png -->
+          <img alt="" src="assets/esp32.png" data-asset="esp32">
+          <div class="grad">
+            <div>
+              <span style="font:400 11px/14px 'Liberation Mono',ui-monospace,monospace;letter-spacing:.44px;color:#eaf1ff">NODE_UUID: RW-ESP32-9921-TRZ</span>
+              <span class="mono" style="color:#6ee7b7">Sync: 100% OK</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form">
+          <div class="field">
+            <div class="lh"><label class="lbl" for="devName">DEVICE NAME</label><span class="alias">NODE ALIAS</span></div>
+            <div class="input"><svg class="i" width="14" height="12"><use href="#tag"/></svg><input id="devName" type="text" value="Trichy-SpeedNode-01" autocomplete="off" spellcheck="false"></div>
+          </div>
+
+          <div class="field">
+            <div class="lh"><label class="lbl" for="spacing">SENSOR SPACING DISTANCE</label><span class="monob" style="color:var(--primary)" id="spacingVal">20.0 m</span></div>
+            <div class="dist">
+              <div class="t"><span>Time-Delta Base (Sensor A → B)</span><code>v = d / Δt</code></div>
+              <input type="range" id="spacing" min="5" max="50" step="0.5" value="20">
+              <div class="scale mono"><span>5.0 m (compact)</span><span>20.0 m (standard)</span><span>50.0 m (long-range)</span></div>
+            </div>
+            <p class="hint">Distance between optical or magnetic road induction sensors. Crucial for accurate ESP32 microsecond time-delta math.</p>
+          </div>
+
+          <div class="two">
+            <div>
+              <div class="lbl">SPEED UNIT</div>
+              <div class="sel"><span>km/h</span><svg class="i" width="11" height="14"><use href="#lock"/></svg></div>
+              <div class="mono" style="color:var(--muted)">Standard (MORTH India)</div>
+            </div>
+            <div>
+              <label class="lbl" for="tol">ALERT TOLERANCE</label>
+              <div class="sel-w">
+                <select id="tol">
+                  <option value="0">+0 km/h (Instant)</option>
+                  <option value="5">+5 km/h</option>
+                  <option value="10">+10 km/h</option>
+                </select>
+              </div>
+              <div class="mono" style="color:var(--muted)" id="tolHint">Zero tolerance active</div>
+            </div>
+          </div>
+
+          <div class="siren">
+            <div class="l">
+              <div class="sic2"><svg class="i" width="15" height="15"><use href="#volume"/></svg></div>
+              <div><b>Audio Alert Siren</b><div class="s-sub">Buzzer trigger on speed violation</div></div>
+            </div>
+            <div class="r">
+              <button class="test" id="testBtn"><svg class="i" width="7" height="9"><use href="#play"/></svg><span>Test Sound</span></button>
+              <button class="sw" id="sirenSw" role="switch" aria-checked="true" aria-label="Audio alert siren"></button>
+            </div>
+          </div>
+
+          <div class="mqtt">
+            <div class="row">
+              <span class="lbl">MQTT TELEMETRY ENDPOINT</span>
+              <span class="ok monob"><i></i>CONNECTED</span>
+            </div>
+            <div class="url"><svg class="i" width="13" height="11"><use href="#cloud"/></svg><code>ssl://broker.roadwatch.io:8883/nodes/trichy-01</code></div>
+            <div class="meta mono"><span>QoS: 1 (At least once)</span><span>TLS 1.3 Encrypted</span></div>
+          </div>
+
+          <div style="padding-top:4px">
+            <button class="save" id="saveBtn"><svg class="i" width="15" height="15"><use href="#save"/></svg><span id="saveTxt">Save Hardware Configuration</span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer microcard -->
+      <div class="foot-card">
+        <div class="fi"><svg class="i" width="16" height="16"><use href="#usb"/></svg></div>
+        <div>
+          <b>Need to calibrate on-site?</b>
+          <p>Connect USB-C to ESP32 for direct Serial Monitor 115200 baud flashing.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const STORE = 'roadwatch.config.v1';
+  const state = { speed: 62, limit: 50, tol: 0, live: false, hbSec: 5, timers: [] };
+  const trichyPos = { lat: 10.8284, lng: 78.6946 };
+  let gmap, vehicleMarker;
+  let toastT;
+
+  const toast = msg => {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
+  };
+
+  /* ---------- Preview empty state ---------- */
+  $('emptyBtn').addEventListener('click', () => {
+    const on = document.body.classList.toggle('is-empty');
+    $('emptyBtn').setAttribute('aria-pressed', on);
+    $('emptyLabel').textContent = on ? 'Show Vehicles' : 'Preview Empty State';
+    $('unitsTitle').textContent = on ? '0 Monitored Units' : '2 Monitored Units';
+    $('onlineChip').textContent = on ? '0 Online' : '1 Online';
+    $('offlineChip').textContent = on ? '0 Offline' : '1 Offline';
+    if (on && state.live) toggleLive();
+  });
+
+  /* ---------- Live monitoring (simulated telemetry) ---------- */
+  function renderSpeed() {
+    const max = state.limit + state.tol;
+    const bad = state.speed > max;
+    $('speed').textContent = Math.round(state.speed);
+    $('speed').style.color = bad ? 'var(--err)' : 'var(--ok-ink2)';
+    const pill = $('speedPill');
+    pill.className = 'pill monob ' + (bad ? 'bad' : 'good');
+    $('speedPillTxt').textContent = bad ? `Exceeded (>${max})` : `Within limit (≤${max})`;
+  }
+  const hbText = s => s < 60 ? `${s}s ago` : `${Math.floor(s / 60)}m ago`;
+  function toggleLive() {
+    state.live = !state.live;
+    $('liveTxt').textContent = state.live ? 'Stop Live' : 'Monitor Live';
+    if (state.live) {
+      toast('Live telemetry started');
+      state.hbSec = 0; $('hb').textContent = 'just now';
+      state.timers.push(setInterval(() => {
+        state.speed = Math.max(20, Math.min(90, state.speed + (Math.random() * 16 - 8)));
+        state.hbSec = 0; renderSpeed();
+        $('latency').textContent = `Latency: ${40 + Math.floor(Math.random() * 20)}ms (UDP)`;
+        if (vehicleMarker) {
+          const jitterLat = (Math.random() - 0.5) * 0.0003;
+          const jitterLng = (Math.random() - 0.5) * 0.0003;
+          vehicleMarker.setPosition({ lat: trichyPos.lat + jitterLat, lng: trichyPos.lng + jitterLng });
+        }
+        if (state.speed > state.limit + state.tol && $('sirenSw').getAttribute('aria-checked') === 'true') beep(0.35);
+      }, 2000));
+      state.timers.push(setInterval(() => { state.hbSec++; $('hb').textContent = state.hbSec === 0 ? 'just now' : hbText(state.hbSec); }, 1000));
+    } else {
+      state.timers.forEach(clearInterval); state.timers = [];
+      if (vehicleMarker) vehicleMarker.setPosition(trichyPos);
+      toast('Live telemetry stopped');
+    }
+  }
+  $('liveBtn').addEventListener('click', toggleLive);
+
+  /* ---------- Calibrate: jump to settings ---------- */
+  $('calBtn').addEventListener('click', () => {
+    $('settingsAnchor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => $('devName').focus({ preventScroll: true }), 450);
+  });
+
+  /* ---------- Ping offline device ---------- */
+  $('pingBtn').addEventListener('click', () => {
+    const b = $('pingBtn'); b.disabled = true; $('pingTxt').textContent = 'Pinging…';
+    setTimeout(() => {
+      b.disabled = false; $('pingTxt').textContent = 'Ping Device';
+      toast('No response – ESP32-DEPOT-02 is still offline');
+    }, 1600);
+  });
+
+  /* ---------- Form ---------- */
+  const markDirty = () => {
+    $('calBadge').classList.add('dirty'); $('calTxt').textContent = 'Unsaved';
+  };
+  const setSpacing = v => { $('spacingVal').textContent = `${Number(v).toFixed(1)} m`; };
+  const setTol = v => {
+    state.tol = Number(v);
+    $('tolHint').textContent = state.tol === 0 ? 'Zero tolerance active' : `Alerts after +${state.tol} km/h`;
+    renderSpeed();
+  };
+  $('spacing').addEventListener('input', e => { setSpacing(e.target.value); markDirty(); });
+  $('tol').addEventListener('change', e => { setTol(e.target.value); markDirty(); });
+  $('devName').addEventListener('input', markDirty);
+
+  /* ---------- Siren ---------- */
+  let ctx;
+  function beep(dur = 1.2) {
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(600, t);
+      for (let i = 0; i < dur / 0.3; i++) {
+        o.frequency.linearRampToValueAtTime(950, t + i * 0.3 + 0.15);
+        o.frequency.linearRampToValueAtTime(600, t + i * 0.3 + 0.3);
+      }
+      g.gain.setValueAtTime(0.06, t); g.gain.linearRampToValueAtTime(0, t + dur);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + dur);
+    } catch (_) {}
+  }
+  $('testBtn').addEventListener('click', () => beep());
+  $('sirenSw').addEventListener('click', e => {
+    const on = e.currentTarget.getAttribute('aria-checked') !== 'true';
+    e.currentTarget.setAttribute('aria-checked', on);
+    $('testBtn').disabled = !on;
+    markDirty();
+  });
+
+  /* ---------- Save / load ---------- */
+  function load() {
+    try {
+      const c = JSON.parse(localStorage.getItem(STORE) || 'null');
+      if (!c) return;
+      if (c.name) $('devName').value = c.name;
+      if (c.spacing !== undefined) { $('spacing').value = c.spacing; setSpacing(c.spacing); }
+      if (c.tol !== undefined) { $('tol').value = c.tol; setTol(c.tol); }
+      if (c.siren !== undefined) {
+        $('sirenSw').setAttribute('aria-checked', c.siren);
+        $('testBtn').disabled = !c.siren;
+      }
+    } catch (_) {}
+  }
+  $('saveBtn').addEventListener('click', () => {
+    const b = $('saveBtn'); b.disabled = true; $('saveTxt').textContent = 'Saving…';
+    setTimeout(() => {
+      try {
+        const nameVal = $('devName').value.trim() || 'Trichy-SpeedNode-01';
+        $('devName').value = nameVal;
+        localStorage.setItem(STORE, JSON.stringify({
+          name: nameVal,
+          spacing: $('spacing').value,
+          tol: $('tol').value,
+          siren: $('sirenSw').getAttribute('aria-checked') === 'true'
+        }));
+      } catch (_) {}
+      b.disabled = false; $('saveTxt').textContent = 'Save Hardware Configuration';
+      $('calBadge').classList.remove('dirty'); $('calTxt').textContent = 'Calibrated';
+      toast('Hardware configuration saved');
+    }, 900);
+  });
+
+  /* ---------- Google Maps Integration ---------- */
+  window.initMap = function() {
+    try {
+      if (!window.google || !google.maps) {
+        showMapFallback();
+        return;
+      }
+      gmap = new google.maps.Map($('gmap'), {
+        center: trichyPos,
+        zoom: 15,
+        disableDefaultUI: true,
+        gestureHandling: 'cooperative',
+        styles: [
+          { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+          { featureType: 'transit', stylers: [{ visibility: 'off' }] }
+        ]
+      });
+
+      // Live Geofence boundary
+      new google.maps.Circle({
+        strokeColor: '#004ac6',
+        strokeOpacity: 0.8,
+        strokeWeight: 1.5,
+        fillColor: '#004ac6',
+        fillOpacity: 0.12,
+        map: gmap,
+        center: trichyPos,
+        radius: 350
+      });
+
+      // Primary Vehicle Marker
+      vehicleMarker = new google.maps.Marker({
+        position: trichyPos,
+        map: gmap,
+        title: 'My Vehicle (TN-45-AZ-9921)',
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 6,
+          fillColor: '#004ac6',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (gmap && trichyPos) {
+          google.maps.event.trigger(gmap, 'resize');
+          gmap.setCenter(trichyPos);
+        }
+      });
+    } catch (_) {
+      showMapFallback();
+    }
+  };
+
+  load(); renderSpeed();
+})();
+
+function showMapFallback() {
+  const gm = document.getElementById('gmap');
+  const fb = document.getElementById('mapFallback');
+  if (gm) gm.style.display = 'none';
+  if (fb) fb.style.display = 'block';
+}
+window.gm_authFailure = showMapFallback;
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAfkx-yV724SFTB-ZHO7JtEc-cnOuy30cE&callback=initMap" async defer onerror="showMapFallback()"></script>
+</body>
+</html>
